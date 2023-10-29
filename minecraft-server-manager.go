@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -22,12 +23,43 @@ func main() {
 		Usage: "managing minecraft a server, obvs",
 		Commands: []*cli.Command{
 			{
+				Name:  "init",
+				Usage: "create the server",
+				Action: func(c *cli.Context) error {
+					args := c.Args().Slice()
+					var version, loader string
+					if len(args) > 0 {
+						version = args[0]
+					}
+					if len(args) > 1 {
+						loader = args[1]
+					}
+
+					if version == "" {
+						panic("Minecraft version is required! Usage: create-minecraft-server <version> <forge | fabric | vanilla>")
+					}
+
+					if loader == "" {
+						panic("Server type is required! Usage: create-minecraft-server <version> <forge | fabric | vanilla>")
+					}
+
+					createServerAndStart(loader, version)
+					return nil
+				},
+			},
+			{
+				Name:  "discard",
+				Usage: "delete the server instance, data will be persisted",
+				Action: func(c *cli.Context) error {
+					discardServer()
+					return nil
+				},
+			},
+			{
 				Name:  "start",
 				Usage: "start the server",
 				Action: func(c *cli.Context) error {
-					version := c.Args().First() // Get the first argument as the version
-					loader := c.Args().Get(1)   // Get the second argument as the loader
-					startServer(version, loader)
+					startServer()
 					return nil
 				},
 			},
@@ -78,8 +110,46 @@ func main() {
 		log.Fatal(err)
 	}
 }
+func startServer() {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
 
-func startServer(loader string, version string) {
+	containerName := "mc"
+
+	err = cli.ContainerStart(ctx, containerName, types.ContainerStartOptions{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	println("Server started successfully!")
+}
+
+func stopServer() {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer cli.Close()
+
+	containerName := "mc"
+
+	timeout := int(time.Second * 10)
+	err = cli.ContainerStop(ctx, containerName, container.StopOptions{
+		Timeout: &timeout,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	println("Server stopped successfully!")
+}
+
+func createServerAndStart(loader string, version string) {
 	// handle vars
 	loader = strings.ToLower(loader)
 
@@ -122,7 +192,7 @@ func startServer(loader string, version string) {
 	// create container
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Image: "docker.io/itzg/minecraft-server",
-		Env:   []string{"EULA=TRUE", "TYPE=" + loader, "VERSION=" + version},
+		Env:   []string{"EULA=TRUE", "TYPE=" + loader, "VERSION=" + version, "INIT_MEMORY=6G", "MAX_MEMORY=6G"},
 		Tty:   false,
 	}, &container.HostConfig{
 		Binds: []string{dataDir + ":/data"},
@@ -134,10 +204,10 @@ func startServer(loader string, version string) {
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
-	println("Server started successfully!")
+	println("Server created and started successfully!")
 }
 
-func stopServer() {
+func discardServer() {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -154,5 +224,5 @@ func stopServer() {
 		panic(err)
 	}
 
-	println("Server stopped successfully!")
+	println("Server discarded successfully. Run 'minecraft-server-manager init' to create a new one")
 }
