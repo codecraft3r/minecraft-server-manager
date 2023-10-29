@@ -1,4 +1,4 @@
-module codecraft/minecraft-server-manager
+module github.com/codecraft3r/minecraft-server-manager
 
 go 1.21.3
 
