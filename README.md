@@ -10,7 +10,7 @@ Before using the Minecraft Server Manager, make sure you have the following prer
 
 ## Installation
 
-To install the Minecraft Server Manager, you can download the binary for your operating system from [Github Releases](https://github.com/codecraft3r/minecraft-server-manager/releases) page on GitHub. Be sure to choose the appropriate version for your system:
+To install the Minecraft Server Manager, you can download the binary for your operating system from [Github Releases](https://github.com/codecraft3r/minecraft-server-manager/releases). Be sure to choose the appropriate version for your system.
 
 After downloading the binary, place it in a directory on your system's PATH.
 
